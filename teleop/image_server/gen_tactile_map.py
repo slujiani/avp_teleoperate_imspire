@@ -7,8 +7,6 @@ from matplotlib import cm
 # 自定义颜色映射（从白色到红色）
 from matplotlib.colors import LinearSegmentedColormap
 
-from image_server import RealSenseCamera
-
 class leftHand:
     def __init__(self):
         self.MODBUS_IP = '172.16.11.210'
@@ -97,11 +95,6 @@ class leftHand:
         colored_palm_matrix = custom_cmap(norm_palm_matrix)
         # 去除 alpha 通道，只保留 RGB 部分
         colored_palm_matrix = colored_palm_matrix[:, :, :3]
-        # # Convert normalized tactile data to color map using jet colormap
-        # cmap = plt.colormaps['jet']
-        # print("jet(0):", cmap(0))
-
-        # colored_palm_matrix = cmap(norm_palm_matrix)[:, :, :3]
 
         # 触觉图像大小
         tactile_width = color_img.shape[1] // 4  # 1/4 宽度
@@ -121,44 +114,41 @@ class leftHand:
         return overlay
 
 
-if __name__ == "__main__":
-    config = {
-        'fps': 30,
-        'head_camera_type': 'realsense',
-        'head_camera_image_shape': [480, 640],  # Head camera resolution
-        'head_camera_id_numbers': ['309122300773',],
-        # 'wrist_camera_type': 'opencv',
-        # 'wrist_camera_image_shape': [480, 640],  # Wrist camera resolution
-        # 'wrist_camera_id_numbers': [2, 4],
-    }
-    fps = config.get('fps', 30)
-    head_camera_type = config.get('head_camera_type', 'opencv')
-    head_image_shape = config.get('head_camera_image_shape', [480, 640])  # (height, width)
-    head_camera_id_numbers = config.get('head_camera_id_numbers', [0])
-    head_cameras = []
-    for serial_number in head_camera_id_numbers:
-        camera = RealSenseCamera(img_shape=head_image_shape, fps=fps, serial_number=serial_number)
-        head_cameras.append(camera)
-    head_frames = []
-    for cam in head_cameras:
-        color_image, depth_image = cam.get_frame()
-        if color_image is None:
-            print("[Image Server] Head camera frame read is error.")
-            break
-        # 加上触觉热力图
-    left_hand = leftHand()
-    result_image = left_hand.tactile_map(color_image)
-    # 保存图像到本地
-    cv2.imwrite('result_image_holding_bottle.png', result_image)
-    # Display the result image
-    cv2.imshow('Tactile Heat Map on RGB Frame', result_image)
-
-
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-
+# if __name__ == "__main__":
+#     config = {
+#         'fps': 30,
+#         'head_camera_type': 'realsense',
+#         'head_camera_image_shape': [480, 640],  # Head camera resolution
+#         'head_camera_id_numbers': ['427622273836',],
+#         # 'wrist_camera_type': 'opencv',
+#         # 'wrist_camera_image_shape': [480, 640],  # Wrist camera resolution
+#         # 'wrist_camera_id_numbers': [2, 4],
+#     }
+#     fps = config.get('fps', 30)
+#     head_camera_type = config.get('head_camera_type', 'opencv')
+#     head_image_shape = config.get('head_camera_image_shape', [480, 640])  # (height, width)
+#     head_camera_id_numbers = config.get('head_camera_id_numbers', [0])
+#     head_cameras = []
+#     for serial_number in head_camera_id_numbers:
+#         camera = RealSenseCamera(img_shape=head_image_shape, fps=fps, serial_number=serial_number)
+#         head_cameras.append(camera)
+#     head_frames = []
+#     for cam in head_cameras:
+#         color_image, depth_image = cam.get_frame()
+#         if color_image is None:
+#             print("[Image Server] Head camera frame read is error.")
+#             break
+#         # 加上触觉热力图
+#     left_hand = leftHand()
+#     result_image = left_hand.tactile_map(color_image)
+#     # 保存图像到本地
+#     cv2.imwrite('result_image_holding_bottle.png', result_image)
+#     # Display the result image
+#     cv2.imshow('Tactile Heat Map on RGB Frame', result_image)
+#
+#
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
 
 
 

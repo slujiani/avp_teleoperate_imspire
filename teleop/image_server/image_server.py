@@ -5,7 +5,7 @@ import struct
 from collections import deque
 import numpy as np
 import pyrealsense2 as rs
-# from gen_tactile_map import leftHand
+from gen_tactile_map import leftHand
 
 
 class RealSenseCamera(object):
@@ -58,7 +58,7 @@ class RealSenseCamera(object):
             return None
 
         color_image = np.asanyarray(color_frame.get_data())
-        # color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+        color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
         depth_image = np.asanyarray(depth_frame.get_data()) if self.enable_depth else None
         return color_image, depth_image
 
@@ -143,9 +143,9 @@ class ImageServer:
         self.head_image_shape = config.get('head_camera_image_shape', [480, 640])      # (height, width)
         self.head_camera_id_numbers = config.get('head_camera_id_numbers', [0])
 
-        # self.wrist_camera_type = config.get('wrist_camera_type', None)
-        # self.wrist_image_shape = config.get('wrist_camera_image_shape', [480, 640])    # (height, width)
-        # self.wrist_camera_id_numbers = config.get('wrist_camera_id_numbers', None)
+        self.wrist_camera_type = config.get('wrist_camera_type', None)
+        self.wrist_image_shape = config.get('wrist_camera_image_shape', [480, 640])    # (height, width)
+        self.wrist_camera_id_numbers = config.get('wrist_camera_id_numbers', None)
 
         self.port = port
         self.Unit_Test = Unit_Test
@@ -165,18 +165,18 @@ class ImageServer:
             print(f"[Image Server] Unsupported head_camera_type: {self.head_camera_type}")
 
         # Initialize wrist cameras if provided
-        # self.wrist_cameras = []
-        # if self.wrist_camera_type and self.wrist_camera_id_numbers:
-        #     if self.wrist_camera_type == 'opencv':
-        #         for device_id in self.wrist_camera_id_numbers:
-        #             camera = OpenCVCamera(device_id=device_id, img_shape=self.wrist_image_shape, fps=self.fps)
-        #             self.wrist_cameras.append(camera)
-        #     elif self.wrist_camera_type == 'realsense':
-        #         for serial_number in self.wrist_camera_id_numbers:
-        #             camera = RealSenseCamera(img_shape=self.wrist_image_shape, fps=self.fps, serial_number=serial_number)
-        #             self.wrist_cameras.append(camera)
-        #     else:
-        #         print(f"[Image Server] Unsupported wrist_camera_type: {self.wrist_camera_type}")
+        self.wrist_cameras = []
+        if self.wrist_camera_type and self.wrist_camera_id_numbers:
+            if self.wrist_camera_type == 'opencv':
+                for device_id in self.wrist_camera_id_numbers:
+                    camera = OpenCVCamera(device_id=device_id, img_shape=self.wrist_image_shape, fps=self.fps)
+                    self.wrist_cameras.append(camera)
+            elif self.wrist_camera_type == 'realsense':
+                for serial_number in self.wrist_camera_id_numbers:
+                    camera = RealSenseCamera(img_shape=self.wrist_image_shape, fps=self.fps, serial_number=serial_number)
+                    self.wrist_cameras.append(camera)
+            else:
+                print(f"[Image Server] Unsupported wrist_camera_type: {self.wrist_camera_type}")
 
         # Set ZeroMQ context and socket
         self.context = zmq.Context()
@@ -194,13 +194,13 @@ class ImageServer:
             else:
                 print("[Image Server] Unknown camera type in head_cameras.")
 
-        # for cam in self.wrist_cameras:
-        #     if isinstance(cam, OpenCVCamera):
-        #         print(f"[Image Server] Wrist camera {cam.id} resolution: {cam.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)} x {cam.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}")
-        #     elif isinstance(cam, RealSenseCamera):
-        #         print(f"[Image Server] Wrist camera {cam.serial_number} resolution: {cam.img_shape[0]} x {cam.img_shape[1]}")
-        #     else:
-        #         print("[Image Server] Unknown camera type in wrist_cameras.")
+        for cam in self.wrist_cameras:
+            if isinstance(cam, OpenCVCamera):
+                print(f"[Image Server] Wrist camera {cam.id} resolution: {cam.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)} x {cam.cap.get(cv2.CAP_PROP_FRAME_WIDTH)}")
+            elif isinstance(cam, RealSenseCamera):
+                print(f"[Image Server] Wrist camera {cam.serial_number} resolution: {cam.img_shape[0]} x {cam.img_shape[1]}")
+            else:
+                print("[Image Server] Unknown camera type in wrist_cameras.")
 
         print("[Image Server] Image server has started, waiting for client connections...")
 
@@ -230,14 +230,15 @@ class ImageServer:
     def _close(self):
         for cam in self.head_cameras:
             cam.release()
-        # for cam in self.wrist_cameras:
-        #     cam.release()
+        for cam in self.wrist_cameras:
+            cam.release()
         self.socket.close()
         self.context.term()
         print("[Image Server] The server has been closed.")
 
     def send_process(self):
         try:
+            left_hand = leftHand()
             while True:
                 head_frames = []
                 for cam in self.head_cameras:
@@ -252,10 +253,7 @@ class ImageServer:
                             print("[Image Server] Head camera frame read is error.")
                             break
                         #加上触觉热力图
-                        # left_hand=leftHand()
-                        # color_image=left_hand.tactile_map(color_image)
-
-
+                        color_image=left_hand.tactile_map(color_image)
                     head_frames.append(color_image)
                 if len(head_frames) != len(self.head_cameras):
                     break
@@ -315,11 +313,12 @@ if __name__ == "__main__":
         'fps': 30,
         'head_camera_type': 'realsense',
         'head_camera_image_shape': [480, 640],  # Head camera resolution
-        'head_camera_id_numbers': ['309122300773',],
+        'head_camera_id_numbers': ['309122300773',],   #427622273836是d405的序列号   309122300773是d455的序列号
         # 'wrist_camera_type': 'opencv',
         # 'wrist_camera_image_shape': [480, 640],  # Wrist camera resolution
         # 'wrist_camera_id_numbers': [2, 4],
     }
+
 
     server = ImageServer(config, Unit_Test=False)
     server.send_process()
